@@ -111,7 +111,7 @@ def execute_terraform(terraform_init_vars, terraform_vars){
             error("Unable to remove terraform_plan.tf")
         }
     }
-}xww
+}
 
 def print_audit_information(params){
     print "#############################################"
