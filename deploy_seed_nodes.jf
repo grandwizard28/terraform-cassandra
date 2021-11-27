@@ -1,0 +1,130 @@
+#!groovy
+
+def seed_nodes_private_ips
+
+pipeline {
+    environment {
+        AWS_REGION = "us-east-1"
+        S3_BUCKET_NAME = "cassandra-config"
+        S3_BUCKET_KEY = "${params.environment}/cassandra/${name}"
+    }
+    agent any
+    stages{
+        stage("Setup Parameters"){
+            steps {
+                script {
+                    properties([
+                        parameters([
+                            choice(
+                                name: 'name',
+                                description: '[Mandatory] Name of cluster',
+                                defaultValue: 'cassandra-cluster',
+                                trim: true
+                            ),
+                            choice(
+                                name: 'environment',
+                                description: '[Mandatory] Environment to deploy into',
+                                choices: ['development', 'staging', 'production'], 
+                                defaultValue: 'production',
+                                trim: true
+                            ),
+                            string(
+                                name: 'ami',
+                                description: '[Mandatory] Ubuntu AMI of underlying EC2 instance',
+                                defaultValue: 'ami-07ebfd5b3428b6f4d',
+                                trim: true
+                            ),
+                            string(
+                                name: 'vpc_id',
+                                description: '[Mandatory] ID of VPC to deploy into',
+                                defaultValue: 'ami-07ebfd5b3428b6f4d',
+                                trim: true
+                            ),
+                            string(
+                                name: 'subnet_ids',
+                                description: '[Mandatory] Comma Separated List of Subnet IDs of VPC to deploy into',
+                                defaultValue: 'subnet-cff6f78254323,subnet-cff6f782hu424,subnet-cff6f782oi988',
+                                trim: true
+                            ),
+                            string(
+                                name: 'instance_type',
+                                description: '[Mandatory] Instance Type of underlying EC2',
+                                defaultValue: 't2.small',
+                                trim: true
+                            ),
+                            string(
+                                name: 'num_instances',
+                                description: '[Mandatory] Number of nodes in cluster',
+                                defaultValue: 't2.small',
+                                trim: true
+                            ),
+                        ])
+                    ])
+                }
+            }
+        }
+
+        stage('Initialize Ingredients'){
+            steps{
+                script{
+
+                }
+            }
+        }
+
+        stage('Execute Terraform'){
+            execute_terraform()
+
+        }
+
+        stage('Create Config Files'){
+            steps{
+                script{
+                    prepare_config_files(params.name, seed_nodes_private_ips)
+                }
+            }
+        }
+
+        stage('Upload Config Files to S3'){
+            steps{
+                script{
+                    sh(script: "aws s3 cp config s3://${env.S3_BUCKET_NAME}/${env.S3_BUCKET_KEY}/ --recursive")
+                }
+            }
+        }
+
+        stage('Audit'){
+
+        }
+    }
+
+}
+
+def execute_terraform(){
+    def returnStatus = sh(script: "terraform init", returnStatus: true)
+    if(returnStatus!=0){
+        error("Unable to execute terraform init")
+    }
+
+    returnStatus = sh(script: "terraform plan -out=apply.tf", returnStatus: true)
+    if(returnStatus!=0){
+        error("Unable to execute terraform plan")
+    }
+
+    returnStatus = sh(script: "terraform apply -auto-approve apply.tf", returnStatus: true)
+    if(returnStatus!=0){
+        error("Unable to execute terraform apply")
+    }
+
+    returnStatus = sh(script: "rm apply.tf", returnStatus: true)
+    if(returnStatus!=0){
+        error("Unable to remove apply.tf")
+    }
+
+    seed_nodes_private_ips = sh(script: "terraform output -json cassandra_seed_nodes_private_ips", returnStatus: true)
+}
+
+def prepare_config_files(name, seedNodePrivateIPs){
+    def replaceNameReturnStatus = sh(script: "sed -i 's/@@NAME_OF_CLUSTER@@/${name}/g' config/cassandra.yaml", returnStatus: true)
+    def replaceSeedNodePrivateIPsReturnStatus = sh(script: "sed -i 's/@@LIST_OF_SEED_NODES@@/${seedNodePrivateIPs.join(',')}/g' config/cassandra.yaml", returnStatus: true)
+}
