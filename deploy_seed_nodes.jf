@@ -195,7 +195,6 @@ def prepare_config_files(name, seed_nodes_private_ips){
     	join_private_ips = join_private_ips + private_ip + ","
     }
     join_private_ips = join_private_ips.substring(0, join_private_ips.length()-1)
-    join_private_ips = "\"" + join_private_ips + "\""
 
     return_status = sh(script: "sed -i 's/@@LIST_OF_SEED_NODES@@/${join_private_ips}/g' config/cassandra/cassandra.yaml", returnStatus: true)
     if(return_status!=0){
