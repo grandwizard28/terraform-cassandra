@@ -15,7 +15,7 @@ pipeline {
                 script {
                     properties([
                         parameters([
-                            choice(
+                            string(
                                 name: 'name',
                                 description: '[Mandatory] Name of cluster',
                                 defaultValue: 'cassandra-cluster',
