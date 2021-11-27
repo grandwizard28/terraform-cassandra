@@ -31,9 +31,3 @@ variable "CONFIG_BUCKET_NAME" {
 
 variable "CONFIG_BUCKET_KEY" {
 }
-
-variable "STATE_BUCKET_NAME" {
-}
-variable "STATE_BUCKET_KEY" {
-
-}
