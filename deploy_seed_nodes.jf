@@ -205,10 +205,7 @@ def prepare_config_files(name, seed_nodes_private_ips){
 
 
 def upload_config_files(){
-    def return_status = sh(script: "aws s3 cp config/cassandra/ s3://${env.CONFIG_BUCKET_NAME}/${env.COMMON_BUCKET_KEY}/ --recursive")
-    if(return_status!=0){
-        error("Unable to upload config files to s3")
-    }
+    sh(script: "aws s3 cp config/cassandra/ s3://${env.CONFIG_BUCKET_NAME}/${env.COMMON_BUCKET_KEY}/ --recursive")
 }
 
 def print_audit_information(params){
