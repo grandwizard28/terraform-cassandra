@@ -89,7 +89,7 @@ def check_terraform(){
     print "TERRAFORM_EXE_PATH is set to ${TERRAFORM_EXE_PATH}"
 }
 
-def execute_terraform(terraform_init_vars, terraform_vars){
+def execute_terraform(terraform_init_vars){
     dir("terraform"){
         def returnStatus = sh(script: "${TERRAFORM_EXE_PATH} init ${terraform_init_vars}", returnStatus: true)
         if(returnStatus!=0){
