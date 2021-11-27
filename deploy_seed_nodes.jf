@@ -71,7 +71,8 @@ pipeline {
                 script {
                     check_terraform()
                     def terraform_vars = get_terraform_vars(params)
-                    execute_terraform(terraform_vars)  
+                    def terraform_init_vars = terraform_init_vars()
+                    execute_terraform(terraform_init_vars, terraform_vars)  
                 }
             }
 
@@ -104,6 +105,12 @@ pipeline {
         }
     }
 
+    post {
+        always {
+            cleanWs()
+        }
+    }
+
 }
 
 def get_terraform_vars(params){
@@ -122,10 +129,18 @@ def get_terraform_vars(params){
     terraform_vars += " -var 'CONFIG_BUCKET_NAME=${env.CONFIG_BUCKET_NAME}'"
     terraform_vars += " -var 'CONFIG_BUCKET_KEY=${env.COMMON_BUCKET_KEY}'"
 
-    sh(script: "sed -i 's#var.STATE_BUCKET_NAME#\"${env.STATE_BUCKET_NAME}\"#g' terraform/backend.tf", returnStatus: true)
+    sh(script: "sed -i 's#var.STATE_BUCKET_NAME#\"\"#g' terraform/backend.tf", returnStatus: true)
     sh(script: "sed -i 's#var.STATE_BUCKET_KEY#\"${env.COMMON_BUCKET_KEY}\"#g' terraform/backend.tf", returnStatus: true)
     sh(script: "sed -i 's#var.AWS_REGION#\"${env.AWS_REGION}\"#g' terraform/backend.tf", returnStatus: true)
     return terraform_vars
+}
+
+def get_terraform_init_vars(){
+    def terraform_init_vars = ""
+    terraform_init_vars += " -backend-config=\"bucket=${env.STATE_BUCKET_NAME}\" "
+    terraform_init_vars += " -backend-config=\"key=${env.COMMON_BUCKET_KEY}\" "
+    terraform_init_vars += " -backend-config=\"region=${env.AWS_REGION}\" "
+    return terraform_init_vars
 }
 
 def check_terraform(){
@@ -139,9 +154,9 @@ def check_terraform(){
     print "TERRAFORM_EXE_PATH is set to ${TERRAFORM_EXE_PATH}"
 }
 
-def execute_terraform(terraform_vars){
+def execute_terraform(terraform_init_vars, terraform_vars){
     dir("terraform"){
-        def returnStatus = sh(script: "${TERRAFORM_EXE_PATH} init", returnStatus: true)
+        def returnStatus = sh(script: "${TERRAFORM_EXE_PATH} init ${terraform_init_vars}", returnStatus: true)
         if(returnStatus!=0){
             error("Unable to execute ${TERRAFORM_EXE_PATH} init")
         }
