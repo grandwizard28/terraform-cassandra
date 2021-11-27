@@ -1,7 +1,5 @@
 #!groovy
 
-def seed_nodes_private_ips
-
 pipeline {
     environment {
         AWS_REGION = "us-east-1"
@@ -84,6 +82,8 @@ pipeline {
         stage('Create Config Files'){
             steps{
                 script{
+                    def seed_nodes_private_ips = get_seed_nodes_private_ips()
+                    print "seed_nodes_private_ips inside creare config files: ${seed_nodes_private_ips}"
                     prepare_config_files(params.name, seed_nodes_private_ips)
                 }
             }
@@ -130,14 +130,20 @@ def execute_terraform(){
     // if(returnStatus!=0){
     //     error("Unable to remove apply.tf")
     // }
+    }
+}
 
-    seed_nodes_private_ips = sh(script: "/usr/local/bin/terraform output -json -state=teststate.tfstate cassandra_seed_nodes_private_ips", returnStdout: true)
+def get_seed_nodes_private_ips(){
+    def seed_nodes_private_ips = sh(script: "/usr/local/bin/terraform output -json -state=teststate.tfstate cassandra_seed_nodes_private_ips", returnStdout: true)
     
     print "seed_nodes_private_ips : ${seed_nodes_private_ips}"
-    }
+    return seed_nodes_private_ips
 }
 
 def prepare_config_files(name, seedNodePrivateIPs){
     def replaceNameReturnStatus = sh(script: "sed -i 's/@@NAME_OF_CLUSTER@@/${name}/g' config/cassandra.yaml", returnStatus: true)
-    def replaceSeedNodePrivateIPsReturnStatus = sh(script: "sed -i 's/@@LIST_OF_SEED_NODES@@/${seedNodePrivateIPs.join(',')}/g' config/cassandra.yaml", returnStatus: true)
+    print "seedNodePrivateIPs inside prepare_config_files: ${seedNodePrivateIPs}"
+    def joined = seedNodePrivateIPs.join(',')
+    print "seedNodePrivateIPs inside prepare_config_files: ${joined}"
+    def replaceSeedNodePrivateIPsReturnStatus = sh(script: "sed -i 's/@@LIST_OF_SEED_NODES@@/${joined}/g' config/cassandra.yaml", returnStatus: true)
 }
