@@ -31,6 +31,15 @@ resource "aws_iam_role_policy" "cassandra_policy" {
   {
     "Version": "2012-10-17",
     "Statement": [
+       {
+          "Effect": "Allow",
+          "Action": [
+              "s3:ListBucket"
+          ],
+          "Resource": [
+              "arn:aws:s3:::${var.CONFIG_BUCKET_NAME}"
+          ]
+      },
       {
         "Action": [
           "s3:GetObject",
