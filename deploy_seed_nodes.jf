@@ -110,12 +110,8 @@ pipeline {
 }
 
 def execute_terraform(){
-    def returnStatus = sh(script: "cd terraform", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to execute terraform init")
-    }
-    
-    returnStatus = sh(script: "/usr/local/bin/terraform init", returnStatus: true)
+    dir("terraform"){
+    def returnStatus = sh(script: "/usr/local/bin/terraform init", returnStatus: true)
     if(returnStatus!=0){
         error("Unable to execute terraform init")
     }
@@ -138,10 +134,6 @@ def execute_terraform(){
     seed_nodes_private_ips = sh(script: "/usr/local/bin/terraform output -json cassandra_seed_nodes_private_ips", returnStatus: true)
     
     print "seed_nodes_private_ips : ${seed_nodes_private_ips}"
-    
-    returnStatus = sh(script: "cd ..", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to execute terraform init")
     }
 }
 
