@@ -1,1 +1,123 @@
 #!groovy
+
+def TERRAFORM_EXE_PATH = "terraform"
+pipeline {
+    environment {
+        AWS_REGION = "us-east-1"
+        COMMON_BUCKET_KEY = "${params.environment}/cassandra/${name}"
+        STATE_BUCKET_NAME = "wizards-terraform-state"
+    }
+    agent any
+    stages{
+        stage("Setup Parameters"){
+            steps {
+                script {
+                    properties([
+                        parameters([
+                            string(
+                                name: 'name',
+                                description: '[Mandatory] Name of cluster',
+                                defaultValue: 'cassandra-cluster',
+                                trim: true
+                            ),
+                            choice(
+                                name: 'environment',
+                                description: '[Mandatory] Environment to deploy into',
+                                choices: ['development', 'staging', 'production'], 
+                                defaultValue: 'production',
+                                trim: true
+                            )
+                        ])
+                    ])
+                }
+            }
+        }
+
+        stage('Initialize Ingredients'){
+            steps{
+                script{
+                    checkout scm
+                }
+            }
+        }
+
+        stage('Execute Terraform'){
+            steps{
+                script {
+                    check_terraform()
+                    def terraform_init_vars = get_terraform_init_vars()
+                    execute_terraform(terraform_init_vars)  
+                }
+            }
+
+        }
+
+        stage('Audit'){
+            steps{
+                script{
+                    print_audit_information(params)
+                }
+            }
+
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+
+}
+
+def get_terraform_init_vars(){
+    def terraform_init_vars = ""
+    terraform_init_vars += " -backend-config=\"bucket=${env.STATE_BUCKET_NAME}\" "
+    terraform_init_vars += " -backend-config=\"key=${env.COMMON_BUCKET_KEY}\" "
+    terraform_init_vars += " -backend-config=\"region=${env.AWS_REGION}\" "
+    return terraform_init_vars
+}
+
+def check_terraform(){
+    def returnStatus = sh(script: "terraform", returnStatus: true)
+    if(returnStatus!=0){
+        TERRAFORM_EXE_PATH = "/usr/local/bin/terraform"
+    }else{
+        TERRAFORM_EXE_PATH = "terraform"
+    }
+
+    print "TERRAFORM_EXE_PATH is set to ${TERRAFORM_EXE_PATH}"
+}
+
+def execute_terraform(terraform_init_vars, terraform_vars){
+    dir("terraform"){
+        def returnStatus = sh(script: "${TERRAFORM_EXE_PATH} init ${terraform_init_vars}", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to execute ${TERRAFORM_EXE_PATH} init")
+        }
+
+        returnStatus = sh(script: "/usr/local/bin/terraform plan -destroy -out=terraform_plan.tf", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to execute ${TERRAFORM_EXE_PATH} plan")
+        }
+
+        returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve -destroy terraform_plan.tf", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to execute ${TERRAFORM_EXE_PATH} apply")
+        }
+
+        returnStatus = sh(script: "rm terraform_plan.tf", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to remove terraform_plan.tf")
+        }
+    }
+}xww
+
+def print_audit_information(params){
+    print "#############################################"
+    print "NAME                       :       ${params.name}"
+    print "ENVIRONMENT                :       ${params.environment}"
+    print "STATE BUCKET NAME          :       ${env.STATE_BUCKET_NAME}"
+    print "BUCKET KEY                 :       ${env.COMMON_BUCKET_KEY}"
+    print "#############################################"
+}
