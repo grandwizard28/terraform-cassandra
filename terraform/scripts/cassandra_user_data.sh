@@ -8,11 +8,20 @@ function start_cassandra(){
     systemctl start cassandra
 }
 
+function set_config(){
+    local private_ip=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+    echo "private_ip : $private_ip"
+    sed -i "s/@@LISTEN_ADDRESS@@/$private_ip/g" /etc/cassandra/cassandra.yaml
+    local listen_address=$(cat /etc/cassandra/cassandra.yaml | grep listen_address)
+    echo "cassandra.yaml : $listen_address"
+}
+
 function download_config(){
     aws s3 cp s3://$BUCKET_NAME/$BUCKET_KEY/ /etc/cassandra --recursive
 }
 
 function stop_cassandra(){
+    echo "Stopping cassandra"
     systemctl stop cassandra
     sudo rm -rf /var/lib/cassandra/*
 }
@@ -35,6 +44,7 @@ function main(){
     stop_cassandra
     sleep 1m
     download_config
+    set_config
     start_cassandra
 }
 
