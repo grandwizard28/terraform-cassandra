@@ -116,22 +116,22 @@ def execute_terraform(){
         error("Unable to execute terraform init")
     }
 
-    returnStatus = sh(script: "/usr/local/bin/terraform plan -var 'CONFIG_BUCKET_NAME=${env.S3_BUCKET_NAME}' -var 'CONFIG_BUCKET_KEY=${env.S3_BUCKET_KEY}' -out=apply.tf", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to execute terraform plan")
-    }
+    // returnStatus = sh(script: "/usr/local/bin/terraform plan -var 'CONFIG_BUCKET_NAME=${env.S3_BUCKET_NAME}' -var 'CONFIG_BUCKET_KEY=${env.S3_BUCKET_KEY}' -out=apply.tf", returnStatus: true)
+    // if(returnStatus!=0){
+    //     error("Unable to execute terraform plan")
+    // }
 
-    returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve apply.tf", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to execute terraform apply")
-    }
+    // returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve apply.tf", returnStatus: true)
+    // if(returnStatus!=0){
+    //     error("Unable to execute terraform apply")
+    // }
 
-    returnStatus = sh(script: "rm apply.tf", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to remove apply.tf")
-    }
+    // returnStatus = sh(script: "rm apply.tf", returnStatus: true)
+    // if(returnStatus!=0){
+    //     error("Unable to remove apply.tf")
+    // }
 
-    seed_nodes_private_ips = sh(script: "/usr/local/bin/terraform output -json cassandra_seed_nodes_private_ips", returnStatus: true)
+    seed_nodes_private_ips = sh(script: "/usr/local/bin/terraform output -json -state=teststate.tfstate cassandra_seed_nodes_private_ips", returnStatus: true)
     
     print "seed_nodes_private_ips : ${seed_nodes_private_ips}"
     }
