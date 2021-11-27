@@ -116,9 +116,14 @@ def get_terraform_vars(params){
     def terraform_vars = ""
     terraform_vars += " -var 'NAME=${params.name}'"
     terraform_vars += " -var 'ENVIRONMENT=${params.environment}'"
-    terraform_vars += " -var 'VPC_ID=${env.vpc_id}'"
-    terraform_vars += " -var 'SUBNET_IDs=[${env.subnet_ids}]'"
-    terraform_vars += " -var 'AMI=${env.ami}'"
+    terraform_vars += " -var 'VPC_ID=${params.vpc_id}'"
+    def subnet_ids_string = ""
+    for (subnet_id in params.subnet_ids) {
+        subnet_ids_string = "\"" + subnet_id + "\"" + ","
+    }
+    subnet_ids_string = subnet_ids_string.substring(0, subnet_ids_string.length()-1)
+    terraform_vars += " -var 'SUBNET_IDs=[${subnet_ids_string}]'"
+    terraform_vars += " -var 'AMI=${params.ami}'"
     terraform_vars += " -var 'INSTANCE_TYPE=${params.instance_type}'"
     terraform_vars += " -var 'CONFIG_BUCKET_NAME=${env.CONFIG_BUCKET_NAME}'"
     terraform_vars += " -var 'CONFIG_BUCKET_KEY=${env.COMMON_BUCKET_KEY}'"
