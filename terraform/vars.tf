@@ -15,6 +15,7 @@ variable "VPC_ID" {
 }
 
 variable "SUBNET_IDs" {
+  type = list(string)
   default = ["subnet-cff6f782", "subnet-cff6f782"]
 }
 

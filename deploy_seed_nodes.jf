@@ -119,9 +119,10 @@ def get_terraform_vars(params){
     terraform_vars += " -var 'NAME=${params.name}'"
     terraform_vars += " -var 'ENVIRONMENT=${params.environment}'"
     terraform_vars += " -var 'VPC_ID=${params.vpc_id}'"
-    def subnet_ids = params.subnet_ids.split(',')
+    def subnet_ids_list = params.subnet_ids.split(',')
+    print "subnet_ids_list : subnet_ids_list"
     def subnet_ids_string = ""
-    for (subnet_id in subnet_ids) {
+    for (subnet_id in subnet_ids_list) {
         subnet_ids_string = "\"" + subnet_id + "\"" + ","
     }
     subnet_ids_string = subnet_ids_string.substring(0, subnet_ids_string.length()-1)
