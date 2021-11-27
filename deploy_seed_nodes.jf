@@ -67,7 +67,7 @@ pipeline {
         stage('Initialize Ingredients'){
             steps{
                 script{
-
+                    checkout scm
                 }
             }
         }
@@ -100,6 +100,7 @@ pipeline {
         stage('Audit'){
             steps{
                 script{
+                    print "Audit"
                 }
             }
 
