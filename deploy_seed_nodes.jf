@@ -61,6 +61,7 @@ pipeline {
         stage('Initialize Ingredients'){
             steps{
                 script{
+                    deleteDir()
                     checkout scm
                 }
             }
