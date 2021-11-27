@@ -28,7 +28,9 @@ variable "INSTANCE_TYPE" {
 }
 
 variable "CONFIG_BUCKET_NAME" {
+  default = "config-bucket"
 }
 
 variable "CONFIG_BUCKET_KEY" {
+    default = "config-key"
 }
