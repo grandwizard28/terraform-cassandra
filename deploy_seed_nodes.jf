@@ -145,7 +145,13 @@ def get_seed_nodes_private_ips(){
 def prepare_config_files(name, seedNodePrivateIPs){
     def replaceNameReturnStatus = sh(script: "sed -i 's/@@NAME_OF_CLUSTER@@/${name}/g' config/cassandra.yaml", returnStatus: true)
     print "seedNodePrivateIPs inside prepare_config_files: ${seedNodePrivateIPs}"
-    def joined = seedNodePrivateIPs.join(',')
+    def joined = ""
+    for (privateIP in seedNodePrivateIPs) {
+    	joined = joined + privateIP + ","
+    }
+    joined = joined.substring(0, joined.length()-1)
+    joined = "\"" + joined + "\""
     print "seedNodePrivateIPs inside prepare_config_files: ${joined}"
     def replaceSeedNodePrivateIPsReturnStatus = sh(script: "sed -i 's/@@LIST_OF_SEED_NODES@@/${joined}/g' config/cassandra.yaml", returnStatus: true)
+    sh(script: "cat config/cassandra.yaml")
 }
