@@ -116,7 +116,7 @@ def execute_terraform(){
         error("Unable to execute terraform init")
     }
 
-    returnStatus = sh(script: "/usr/local/bin/terraform plan -out=apply.tf", returnStatus: true)
+    returnStatus = sh(script: "/usr/local/bin/terraform plan -var 'CONFIG_BUCKET_NAME=${env.S3_BUCKET_NAME}' -var 'CONFIG_BUCKET_KEY=${env.S3_BUCKET_KEY}' -out=apply.tf", returnStatus: true)
     if(returnStatus!=0){
         error("Unable to execute terraform plan")
     }
