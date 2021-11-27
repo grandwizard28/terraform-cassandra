@@ -51,13 +51,7 @@ pipeline {
                                 description: '[Mandatory] Instance Type of underlying EC2',
                                 defaultValue: 't2.small',
                                 trim: true
-                            ),
-                            string(
-                                name: 'num_instances',
-                                description: '[Mandatory] Number of nodes in cluster',
-                                defaultValue: 't2.small',
-                                trim: true
-                            ),
+                            )
                         ])
                     ])
                 }
