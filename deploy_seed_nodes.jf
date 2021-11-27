@@ -73,7 +73,11 @@ pipeline {
         }
 
         stage('Execute Terraform'){
-            execute_terraform()
+            steps{
+                script {
+                        execute_terraform()  
+                }
+            }
 
         }
 
@@ -94,6 +98,10 @@ pipeline {
         }
 
         stage('Audit'){
+            steps{
+                script{
+                }
+            }
 
         }
     }
