@@ -1,6 +1,6 @@
 resource "aws_security_group" "cassandra_security_group" {
   vpc_id      = var.VPC_ID
-  name        = "cassandra_security_group"
+  name        = "${var.ENVIRONMENT}-${var.NAME}-security-group"
   description = "Cassandra Security Group that allows SSH and access on port 9042 and 7000"
 
   egress {
@@ -32,6 +32,6 @@ resource "aws_security_group" "cassandra_security_group" {
   }
 
   tags = {
-    Name = "cassandra-security-group"
+    Name = "${var.ENVIRONMENT}-${var.NAME}-security-group"
   }
 }

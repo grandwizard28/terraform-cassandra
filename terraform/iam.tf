@@ -1,5 +1,5 @@
 resource "aws_iam_role" "cassandra_role" {
-  name               = "cassandra_role"
+  name               = "${var.ENVIRONMENT}-${var.NAME}-role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -19,12 +19,12 @@ EOF
 }
 
 resource "aws_iam_instance_profile" "cassandra_instance_profile" {
-  name = "cassandra_instance_profile"
+  name = "${var.ENVIRONMENT}-${var.NAME}-instance-profile"
   role = aws_iam_role.cassandra_role.name
 }
 
 resource "aws_iam_role_policy" "cassandra_policy" {
-  name = "cassandra_policy"
+  name = "${var.ENVIRONMENT}-${var.NAME}-policy"
   role = aws_iam_role.cassandra_role.id
 
   policy = <<-EOF
