@@ -5,7 +5,7 @@ def seed_nodes_private_ips
 pipeline {
     environment {
         AWS_REGION = "us-east-1"
-        S3_BUCKET_NAME = "cassandra-config"
+        S3_BUCKET_NAME = "wizards-cassandra-config"
         S3_BUCKET_KEY = "${params.environment}/cassandra/${name}"
     }
     agent any
