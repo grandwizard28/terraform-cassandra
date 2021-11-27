@@ -134,10 +134,12 @@ def execute_terraform(){
 }
 
 def get_seed_nodes_private_ips(){
+    dir("terraform"){
     def seed_nodes_private_ips = sh(script: "/usr/local/bin/terraform output -json -state=teststate.tfstate cassandra_seed_nodes_private_ips", returnStdout: true)
     
     print "seed_nodes_private_ips : ${seed_nodes_private_ips}"
     return seed_nodes_private_ips
+    }
 }
 
 def prepare_config_files(name, seedNodePrivateIPs){
