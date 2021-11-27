@@ -3,8 +3,10 @@
 pipeline {
     environment {
         AWS_REGION = "us-east-1"
-        S3_BUCKET_NAME = "wizards-cassandra-config"
-        S3_BUCKET_KEY = "${params.environment}/cassandra/${name}"
+        CONFIG_BUCKET_NAME = "wizards-cassandra-config"
+        COMMON_BUCKET_KEY = "${params.environment}/cassandra/${name}"
+        STATE_BUCKET_NAME = "wizards-terraform-state"
+        TERRAFORM_EXE_PATH = ""
     }
     agent any
     stages{
@@ -35,13 +37,13 @@ pipeline {
                             string(
                                 name: 'vpc_id',
                                 description: '[Mandatory] ID of VPC to deploy into',
-                                defaultValue: 'ami-07ebfd5b3428b6f4d',
+                                defaultValue: 'vpc-d630b2ab',
                                 trim: true
                             ),
                             string(
                                 name: 'subnet_ids',
                                 description: '[Mandatory] Comma Separated List of Subnet IDs of VPC to deploy into',
-                                defaultValue: 'subnet-cff6f78254323,subnet-cff6f782hu424,subnet-cff6f782oi988',
+                                defaultValue: 'subnet-cff6f782,subnet-cff6f782',
                                 trim: true
                             ),
                             string(
@@ -73,7 +75,9 @@ pipeline {
         stage('Execute Terraform'){
             steps{
                 script {
-                        execute_terraform()  
+                    check_terraform()
+                    def terraform_vars = get_terraform_vars(params)
+                    execute_terraform(terraform_vars)  
                 }
             }
 
@@ -83,7 +87,6 @@ pipeline {
             steps{
                 script{
                     def seed_nodes_private_ips = get_seed_nodes_private_ips()
-                    print "seed_nodes_private_ips inside creare config files: ${seed_nodes_private_ips}"
                     prepare_config_files(params.name, seed_nodes_private_ips)
                 }
             }
@@ -92,7 +95,7 @@ pipeline {
         stage('Upload Config Files to S3'){
             steps{
                 script{
-                    sh(script: "aws s3 cp config s3://${env.S3_BUCKET_NAME}/${env.S3_BUCKET_KEY}/ --recursive")
+                    upload_config_files()
                 }
             }
         }
@@ -100,7 +103,7 @@ pipeline {
         stage('Audit'){
             steps{
                 script{
-                    print "Audit"
+                    print_audit_information(params)
                 }
             }
 
@@ -109,49 +112,96 @@ pipeline {
 
 }
 
-def execute_terraform(){
+def get_terraform_vars(params){
+    def terraform_vars = ""
+    terraform_vars += " -var 'NAME=${params.name}'"
+    terraform_vars += " -var 'ENVIRONMENT=${params.environment}'"
+    terraform_vars += " -var 'VPC_ID=${env.vpc_id}'"
+    terraform_vars += " -var 'SUBNET_IDs=[${env.subnet_ids}]'"
+    terraform_vars += " -var 'AMI=${env.ami}'"
+    terraform_vars += " -var 'INSTANCE_TYPE=${params.instance_type}'"
+    terraform_vars += " -var 'CONFIG_BUCKET_NAME=${env.CONFIG_BUCKET_NAME}'"
+    terraform_vars += " -var 'CONFIG_BUCKET_KEY=${env.COMMON_BUCKET_KEY}'"
+    terraform_vars += " -var 'STATE_BUCKET_NAME=${env.STATE_BUCKET_NAME}'"
+    terraform_vars += " -var 'STATE_BUCKET_KEY=${env.COMMON_BUCKET_KEY}'"
+    return terraform_vars
+}
+
+def check_terraform(){
+    def returnStatus = sh(script: "terraform", returnStatus: true)
+    if(returnStatus!=0){
+        env.TERRAFORM_EXE_PATH = "/usr/local/bin/terraform"
+    }else{
+        env.TERRAFORM_EXE_PATH = "terraform"
+    }
+}
+
+def execute_terraform(terraform_vars){
     dir("terraform"){
-    def returnStatus = sh(script: "/usr/local/bin/terraform init", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to execute terraform init")
-    }
+        def returnStatus = sh(script: "${env.TERRAFORM_EXE_PATH} init", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to execute ${env.TERRAFORM_EXE_PATH} init")
+        }
 
-    returnStatus = sh(script: "/usr/local/bin/terraform plan -var 'CONFIG_BUCKET_NAME=${env.S3_BUCKET_NAME}' -var 'CONFIG_BUCKET_KEY=${env.S3_BUCKET_KEY}' -out=apply.tf", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to execute terraform plan")
-    }
+        returnStatus = sh(script: "/usr/local/bin/terraform plan ${terraform_vars} -out=terraform_plan.tf", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to execute ${env.TERRAFORM_EXE_PATH} plan")
+        }
 
-    returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve apply.tf", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to execute terraform apply")
-    }
+        returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve terraform_plan.tf", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to execute ${env.TERRAFORM_EXE_PATH} apply")
+        }
 
-    returnStatus = sh(script: "rm apply.tf", returnStatus: true)
-    if(returnStatus!=0){
-        error("Unable to remove apply.tf")
-    }
+        returnStatus = sh(script: "rm terraform_plan.tf", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to remove terraform_plan.tf")
+        }
     }
 }
 
 def get_seed_nodes_private_ips(){
     dir("terraform"){
-    def seed_nodes_private_ips = readJSON text: "${sh(script: "/usr/local/bin/terraform output -json -state=teststate.tfstate cassandra_seed_nodes_private_ips", returnStdout: true)}"
-    
-    print "seed_nodes_private_ips : ${seed_nodes_private_ips}"
-    return seed_nodes_private_ips
+        def terraform_output = sh(script: "${env.TERRAFORM_EXE_PATH} output -json cassandra_seed_nodes_private_ips", returnStdout: true)
+        def seed_nodes_private_ips = readJSON text: "${terraform_output}"
+        print "seed_nodes_private_ips : ${seed_nodes_private_ips}"
+        return seed_nodes_private_ips
     }
 }
 
-def prepare_config_files(name, seedNodePrivateIPs){
-    def replaceNameReturnStatus = sh(script: "sed -i 's/@@NAME_OF_CLUSTER@@/${name}/g' config/cassandra.yaml", returnStatus: true)
-    print "seedNodePrivateIPs inside prepare_config_files: ${seedNodePrivateIPs}"
-    def joined = ""
-    for (privateIP in seedNodePrivateIPs) {
-    	joined = joined + privateIP + ","
+def prepare_config_files(name, seed_nodes_private_ips){
+    def return_status = sh(script: "sed -i 's/@@NAME_OF_CLUSTER@@/${name}/g' config/cassandra/cassandra.yaml", returnStatus: true)
+    if(return_status!=0){
+        error("Unable to replace NAME_OF_CLUSTER")
     }
-    joined = joined.substring(0, joined.length()-1)
-    joined = "\"" + joined + "\""
-    print "seedNodePrivateIPs inside prepare_config_files: ${joined}"
-    def replaceSeedNodePrivateIPsReturnStatus = sh(script: "sed -i 's/@@LIST_OF_SEED_NODES@@/${joined}/g' config/cassandra.yaml", returnStatus: true)
-    sh(script: "cat config/cassandra.yaml")
+
+    def join_private_ips = ""
+    for (private_ip in seed_nodes_private_ips) {
+    	join_private_ips = join_private_ips + private_ip + ","
+    }
+    join_private_ips = join_private_ips.substring(0, join_private_ips.length()-1)
+    join_private_ips = "\"" + join_private_ips + "\""
+
+    return_status = sh(script: "sed -i 's/@@LIST_OF_SEED_NODES@@/${join_private_ips}/g' config/cassandra/cassandra.yaml", returnStatus: true)
+    if(return_status!=0){
+        error("Unable to replace LIST_OF_SEED_NODES")
+    }
+}
+
+
+def upload_config_files(){
+    def return_status = sh(script: "aws s3 cp config/cassandra/ s3://${env.CONFIG_BUCKET_NAME}/${env.COMMON_BUCKET_KEY}/ --recursive")
+    if(return_status!=0){
+        error("Unable to upload config files to s3")
+    }
+}
+
+def print_audit_information(params){
+    print "#############################################"
+    print "NAME                       :       ${params.name}"
+    print "ENVIRONMENT                :       ${params.environment}"
+    print "CONFIGURATION BUCKET NAME  :       ${env.CONFIG_BUCKET_NAME}"
+    print "STATE BUCKET NAME          :       ${env.STATE_BUCKET_NAME}"
+    print "BUCKET KEY                 :       ${env.COMMON_BUCKET_KEY}"
+    print "#############################################"
 }

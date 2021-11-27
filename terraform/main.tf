@@ -19,13 +19,14 @@ data "template_cloudinit_config" "cloudinit_cassandra" {
 
 
 resource "aws_instance" "cassandra_seed_nodes" {
-  count           = length(var.SUBNET_IDs)
-  ami             = var.AMI
-  instance_type   = var.INSTANCE_TYPE
-  subnet_id       = var.SUBNET_IDs[count.index]
-  user_data       = data.template_cloudinit_config.cloudinit_cassandra.rendered
-  security_groups = [aws_security_group.cassandra_security_group.id]
-  key_name        = aws_key_pair.cassandra_key_pair.key_name
+  count                = length(var.SUBNET_IDs)
+  ami                  = var.AMI
+  instance_type        = var.INSTANCE_TYPE
+  subnet_id            = var.SUBNET_IDs[count.index]
+  user_data            = data.template_cloudinit_config.cloudinit_cassandra.rendered
+  security_groups      = [aws_security_group.cassandra_security_group.id]
+  key_name             = aws_key_pair.cassandra_key_pair.key_name
+  iam_instance_profile = aws_iam_instance_profile.cassandra_instance_profile.name
   tags = {
     "Name"             = upper("${var.ENVIRONMENT}-${var.NAME}-${count.index}")
     "Environment"      = upper("${var.ENVIRONMENT}"),
