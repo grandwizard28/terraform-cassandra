@@ -96,7 +96,12 @@ def execute_terraform(terraform_init_vars){
             error("Unable to execute ${TERRAFORM_EXE_PATH} init")
         }
 
-        returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve -destroy", returnStatus: true)
+        returnStatus = sh(script: "/usr/local/bin/terraform plan -destroy -out=terraform_plan.tf", returnStatus: true)
+        if(returnStatus!=0){
+            error("Unable to execute ${TERRAFORM_EXE_PATH} plan")
+        }
+
+        returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve -destroy terraform_plan.tf", returnStatus: true)
         if(returnStatus!=0){
             error("Unable to execute ${TERRAFORM_EXE_PATH} apply")
         }
