@@ -122,9 +122,9 @@ def get_terraform_vars(params){
     terraform_vars += " -var 'CONFIG_BUCKET_NAME=${env.CONFIG_BUCKET_NAME}'"
     terraform_vars += " -var 'CONFIG_BUCKET_KEY=${env.COMMON_BUCKET_KEY}'"
 
-    sh(script: "sed -i 's/var.STATE_BUCKET_NAME/\"${env.STATE_BUCKET_NAME}\"/g' terraform/backend.tf", returnStatus: true)
-    sh(script: "sed -i 's/var.STATE_BUCKET_KEY/\"${env.COMMON_BUCKET_KEY}\"/g' terraform/backend.tf", returnStatus: true)
-    sh(script: "sed -i 's/var.AWS_REGION/\"${env.AWS_REGION}\"/g' terraform/backend.tf", returnStatus: true)
+    sh(script: "sed -i 's#var.STATE_BUCKET_NAME#\"${env.STATE_BUCKET_NAME}\"#g' terraform/backend.tf", returnStatus: true)
+    sh(script: "sed -i 's#var.STATE_BUCKET_KEY#\"${env.COMMON_BUCKET_KEY}\"#g' terraform/backend.tf", returnStatus: true)
+    sh(script: "sed -i 's#var.AWS_REGION#\"${env.AWS_REGION}\"#g' terraform/backend.tf", returnStatus: true)
     return terraform_vars
 }
 
