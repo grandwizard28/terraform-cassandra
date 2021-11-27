@@ -1,12 +1,12 @@
 #!groovy
 
+def TERRAFORM_EXE_PATH = "terraform"
 pipeline {
     environment {
         AWS_REGION = "us-east-1"
         CONFIG_BUCKET_NAME = "wizards-cassandra-config"
         COMMON_BUCKET_KEY = "${params.environment}/cassandra/${name}"
         STATE_BUCKET_NAME = "wizards-terraform-state"
-        TERRAFORM_EXE_PATH = ""
     }
     agent any
     stages{
@@ -129,27 +129,29 @@ def get_terraform_vars(params){
 def check_terraform(){
     def returnStatus = sh(script: "terraform", returnStatus: true)
     if(returnStatus!=0){
-        env.TERRAFORM_EXE_PATH = "/usr/local/bin/terraform"
+        TERRAFORM_EXE_PATH = "/usr/local/bin/terraform"
     }else{
-        env.TERRAFORM_EXE_PATH = "terraform"
+        TERRAFORM_EXE_PATH = "terraform"
     }
+
+    print "TERRAFORM_EXE_PATH is set to ${TERRAFORM_EXE_PATH}"
 }
 
 def execute_terraform(terraform_vars){
     dir("terraform"){
-        def returnStatus = sh(script: "${env.TERRAFORM_EXE_PATH} init", returnStatus: true)
+        def returnStatus = sh(script: "${TERRAFORM_EXE_PATH} init", returnStatus: true)
         if(returnStatus!=0){
-            error("Unable to execute ${env.TERRAFORM_EXE_PATH} init")
+            error("Unable to execute ${TERRAFORM_EXE_PATH} init")
         }
 
         returnStatus = sh(script: "/usr/local/bin/terraform plan ${terraform_vars} -out=terraform_plan.tf", returnStatus: true)
         if(returnStatus!=0){
-            error("Unable to execute ${env.TERRAFORM_EXE_PATH} plan")
+            error("Unable to execute ${TERRAFORM_EXE_PATH} plan")
         }
 
         returnStatus = sh(script: "/usr/local/bin/terraform apply -auto-approve terraform_plan.tf", returnStatus: true)
         if(returnStatus!=0){
-            error("Unable to execute ${env.TERRAFORM_EXE_PATH} apply")
+            error("Unable to execute ${TERRAFORM_EXE_PATH} apply")
         }
 
         returnStatus = sh(script: "rm terraform_plan.tf", returnStatus: true)
@@ -161,7 +163,7 @@ def execute_terraform(terraform_vars){
 
 def get_seed_nodes_private_ips(){
     dir("terraform"){
-        def terraform_output = sh(script: "${env.TERRAFORM_EXE_PATH} output -json cassandra_seed_nodes_private_ips", returnStdout: true)
+        def terraform_output = sh(script: "${TERRAFORM_EXE_PATH} output -json cassandra_seed_nodes_private_ips", returnStdout: true)
         def seed_nodes_private_ips = readJSON text: "${terraform_output}"
         print "seed_nodes_private_ips : ${seed_nodes_private_ips}"
         return seed_nodes_private_ips
